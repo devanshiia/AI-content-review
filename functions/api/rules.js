@@ -27,7 +27,7 @@ const GUIDELINE_RULES = [
 
   // 4. Links & Clean URLs
   { id: 'LINK-01', category: 'Linking & Clean URLs', name: 'Internal Links Added (At Least 1 Relevant Page)' },
-  { id: 'LINK-02', category: 'Linking & Clean URLs', name: 'Skip Internal Links in Introduction (Before 1st H2)' },
+  { id: 'LINK-02', category: 'Linking & Clean URLs', name: 'Skip Internal Links in H1 & Introduction (Allowed from H2 Onwards)' },
   { id: 'LINK-04', category: 'Linking & Clean URLs', name: 'Clean URLs (No AI/Tracking UTM Parameters)' },
 
   // 5. Tone, Readability & Anti-AI

@@ -39,7 +39,7 @@ You must review and evaluate the content EXCLUSIVELY against the following STRIC
 ================================================================================
 4. INTERNAL LINKS & CLEAN URLS:
 - [LINK-01] Internal Links Added to Relevant Pages: Content must include at least 1 internal link to relevant contextual pages. Flag an error/warning ONLY if 0 internal links are present. Do NOT flag any error if multiple internal links (e.g. 2, 4, 6, 10, etc.) are added; there is no upper limit.
-- [LINK-02] Skip Internal Links in the Introduction (First Fold): Do not place internal links in the opening Introduction section (the text before the first H2 heading). Internal links are allowed and encouraged from the first H2 heading onwards. Flag an error ONLY if an internal link is placed in the introduction before the first H2.
+- [LINK-02] Skip Internal Links in H1 and Introduction: Do not place internal links in the H1 title/heading or in the opening introductory paragraph(s) before the first H2 heading. Internal links are allowed and encouraged everywhere else from the first H2 heading onwards. Word count limits do NOT apply to link restrictions; only check that H1 and the opening introduction paragraph contain no internal links.
 - [LINK-04] Clean URLs (No AI / Tracking Parameters): All URLs must be clean and free of tracking parameters such as utm_source=gemini, utm_source=chatgpt, utm_source=claude, or unnecessary query tags.
 
 ================================================================================
@@ -88,7 +88,7 @@ const GUIDELINE_RULES = [
 
   // 4. Links & Clean URLs
   { id: 'LINK-01', category: 'Linking & Clean URLs', name: 'Internal Links Added (At Least 1 Relevant Page)' },
-  { id: 'LINK-02', category: 'Linking & Clean URLs', name: 'Skip Internal Links in Introduction (Before 1st H2)' },
+  { id: 'LINK-02', category: 'Linking & Clean URLs', name: 'Skip Internal Links in H1 & Introduction (Allowed from H2 Onwards)' },
   { id: 'LINK-04', category: 'Linking & Clean URLs', name: 'Clean URLs (No AI/Tracking UTM Parameters)' },
 
   // 5. Tone, Readability & Anti-AI
