@@ -235,15 +235,26 @@ function analyzeLinks(content, title = '') {
     }
   }
 
-  // First fold check (first 180 words)
-  const plainText = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  const words = plainText.split(/\s+/).filter(Boolean);
-  const firstFoldText = words.slice(0, 180).join(' ').toLowerCase();
+  // First fold check: Look for internal links inside the Introduction section (before first H2 heading)
+  let introContent = '';
+  const h2Match = content.match(/<h2\b[^>]*>|(?:\r?\n|^)##\s+/i);
+  if (h2Match && typeof h2Match.index === 'number') {
+    introContent = content.slice(0, h2Match.index);
+  } else {
+    // Fallback if no H2 heading exists: first paragraph or first ~150 words
+    const plainText = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const words = plainText.split(/\s+/).filter(Boolean);
+    introContent = words.slice(0, 150).join(' ');
+  }
 
-  const linksInFirstFold = allLinks.filter(l => {
+  const introLower = introContent.toLowerCase();
+  const linksInFirstFold = internalLinks.filter(l => {
     const linkText = (l.text || '').toLowerCase();
     const linkUrl = (l.url || '').toLowerCase();
-    return (linkText.length > 2 && firstFoldText.includes(linkText)) || (linkUrl.length > 5 && firstFoldText.includes(linkUrl));
+    const rawLink = (l.raw || '').toLowerCase();
+    return (rawLink && introLower.includes(rawLink)) ||
+           (linkUrl.length > 3 && introLower.includes(linkUrl)) ||
+           (linkText.length > 2 && introLower.includes(linkText));
   });
 
   return {
@@ -377,6 +388,13 @@ class ReviewService {
       .replace(/<img[^>]+src=["']data:image\/[^"']+["'][^>]*>/gi, '<img alt="[embedded image]"/>')
       .replace(/data:image\/[a-zA-Z0-9+.-]+;base64,[A-Za-z0-9+/=]{100,}/g, '[embedded image data]');
 
+    // Format content with explicit double-newline paragraph separation for clean LLM parsing
+    const formattedContentForPrompt = sanitizedContentForPrompt
+      .replace(/<\/(?:p|div|h[1-6]|li|blockquote|section|article)>/gi, '</$1>\n\n')
+      .replace(/<br\s*\/?>\s*<br\s*\/?>/gi, '\n\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
     try {
       const userPrompt = `Please review the following blog post thoroughly according to the strict editorial, SEO, and compliance guidelines.
 
@@ -386,8 +404,8 @@ VERIFIED SYSTEM-COMPUTED METRICS (REAL LIVE DATA EXTRACTED FROM POST):
 - Explicit Title Provided: "${finalTitle}" (Length: ${titleLength} characters. ${titleLength > 0 && titleLength <= 58 ? 'Under 58 chars: PASS for length.' : titleLength === 0 ? 'No title provided: FAIL.' : `Over 58 chars (${titleLength}/58): FAIL.`})
 - Explicit Meta Description Provided: "${finalMeta}" (Length: ${metaLength} characters. ${metaLength > 0 && metaLength <= 155 ? 'Under 155 chars: PASS for length.' : metaLength === 0 ? 'No meta description: FAIL.' : `Over 155 chars (${metaLength}/155): FAIL.`})
 - Exact Live Hemingway Readability Score: ${hemingway.label} (Score: ${hemingway.rawScore}. ${hemingway.meetsRequirement ? 'Passes rule [TONE-04] (<= Grade 7).' : 'Fails rule [TONE-04] (exceeds Grade 7).'})
-- Actual Extracted Internal Links Count: ${linkAnalysis.internalLinksCount} internal link(s) (${linkAnalysis.internalLinksCount >= 2 && linkAnalysis.internalLinksCount <= 4 ? 'Passes rule [LINK-01] (2-4 internal links).' : linkAnalysis.internalLinksCount === 0 ? 'Fails rule [LINK-01] (0 internal links).' : `Warning for rule [LINK-01] (Found ${linkAnalysis.internalLinksCount}).`})
-- Links in Opening 1st Fold (First ~180 words): ${linkAnalysis.linksInFirstFoldCount} (${linkAnalysis.linksInFirstFoldCount === 0 ? 'Passes rule [LINK-02].' : 'Fails rule [LINK-02] (Do not place internal links in 1st fold).'})
+- Actual Extracted Internal Links Count: ${linkAnalysis.internalLinksCount} internal link(s) (${linkAnalysis.internalLinksCount >= 1 ? `Passes rule [LINK-01] (${linkAnalysis.internalLinksCount} internal link(s) found - meets at least 1 requirement).` : 'Fails rule [LINK-01] (0 internal links found. At least 1 internal link required).'})
+- Internal Links in Introduction (Before 1st H2): ${linkAnalysis.linksInFirstFoldCount} (${linkAnalysis.linksInFirstFoldCount === 0 ? 'Passes rule [LINK-02] (No internal links in intro before 1st H2).' : `Fails rule [LINK-02] (Found ${linkAnalysis.linksInFirstFoldCount} internal link(s) in intro before 1st H2).`})
 - URL Cleanliness Verification: ${linkAnalysis.isAllClean ? 'ALL URLs ARE 100% CLEAN (Zero UTM / AI tracking parameters). Rule [LINK-04] is a PASS.' : `Found ${linkAnalysis.uncleanLinks.length} URL(s) with tracking parameters: ${linkAnalysis.uncleanLinks.map(l => l.url).join(', ')}.`}
 - List of Detected Internal Links: ${linkAnalysis.internalLinks.length > 0 ? linkAnalysis.internalLinks.map(l => `"${l.text}" (${l.url})`).join(', ') : 'None'}
 - Estimated Reading Time: ~${readTimeMin} minutes
@@ -395,7 +413,7 @@ VERIFIED SYSTEM-COMPUTED METRICS (REAL LIVE DATA EXTRACTED FROM POST):
 
 RAW SUBMITTED BLOG POST CONTENT:
 ---
-${sanitizedContentForPrompt}
+${formattedContentForPrompt}
 ---`;
 
       const response = await client.models.generateContent({
@@ -464,30 +482,27 @@ ${sanitizedContentForPrompt}
           tone04.notes = `Calculated readability level: ${hemingway.label} (Automated Readability Index: ${hemingway.rawScore}, Target: <= Grade 7).`;
         }
 
-        // [LINK-01] Internal Links (2 to 4)
+        // [LINK-01] Internal Links (At least 1 required, no upper limit)
         const link01 = parsedResult.checklist.find(c => c.ruleId === 'LINK-01' || c.ruleId === 'LINKS-01');
         if (link01) {
-          if (linkAnalysis.internalLinksCount >= 2 && linkAnalysis.internalLinksCount <= 4) {
+          if (linkAnalysis.internalLinksCount >= 1) {
             link01.status = 'Pass';
-            link01.notes = `Found ${linkAnalysis.internalLinksCount} internal links in article body: ${linkAnalysis.internalLinks.map(l => l.text).join(', ')} (meets 2-4 requirement).`;
-          } else if (linkAnalysis.internalLinksCount === 0) {
-            link01.status = 'Fail';
-            link01.notes = 'No internal links detected in the article. Please add 2 to 4 relevant internal links.';
+            link01.notes = `Found ${linkAnalysis.internalLinksCount} internal link(s) in article: ${linkAnalysis.internalLinks.map(l => l.text).join(', ')} (meets requirement).`;
           } else {
-            link01.status = 'Warning';
-            link01.notes = `Found ${linkAnalysis.internalLinksCount} internal link(s). Recommendation is 2 to 4 relevant internal links.`;
+            link01.status = 'Fail';
+            link01.notes = 'No internal links detected in the article. Please add at least 1 relevant internal link.';
           }
         }
 
-        // [LINK-02] Skip Internal Links from 1st Fold
+        // [LINK-02] Skip Internal Links in Introduction (Before 1st H2)
         const link02 = parsedResult.checklist.find(c => c.ruleId === 'LINK-02' || c.ruleId === 'LINKS-02');
         if (link02) {
           if (linkAnalysis.linksInFirstFoldCount === 0) {
             link02.status = 'Pass';
-            link02.notes = 'No internal links placed in introductory fold (first ~180 words). Reader focus preserved.';
+            link02.notes = 'No internal links placed in the introductory section before the first H2 heading. Reader focus preserved.';
           } else {
             link02.status = 'Warning';
-            link02.notes = `Found ${linkAnalysis.linksInFirstFoldCount} link(s) in the opening fold. Recommend moving links further down.`;
+            link02.notes = `Found ${linkAnalysis.linksInFirstFoldCount} internal link(s) in the introduction before the 1st H2 heading. Recommend moving links to H2 sections onwards.`;
           }
         }
 
@@ -518,7 +533,7 @@ ${sanitizedContentForPrompt}
           !v.issue.toLowerCase().includes('external link')
         );
 
-        if (linkAnalysis.internalLinksCount >= 2 && linkAnalysis.internalLinksCount <= 4) {
+        if (linkAnalysis.internalLinksCount >= 1) {
           parsedResult.violations = parsedResult.violations.filter(v => 
             v.ruleId !== 'LINK-01' && v.ruleId !== 'LINKS-01'
           );
