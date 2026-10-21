@@ -19,7 +19,7 @@ You must review and evaluate the content EXCLUSIVELY against the following STRIC
 2. STRUCTURE, HEADINGS & FORMATTING:
 - [STRUCT-01] Logical Heading Hierarchy (H2 -> H3): Headings must follow a strict, logical hierarchy (H1 -> H2 -> H3).
 - [STRUCT-02] Clear & Non-Generic Headings: Headings must be clear, compelling, and descriptive (no vague or generic headers like "Overview", "Details", "Section 1").
-- [STRUCT-03] No -ing Verbs in Headings: Do not use -ing verbs in headings if a simpler, direct root form exists (e.g., use "Build High-Performance APIs" instead of "Building High-Performance APIs", "Optimize Your Database" instead of "Optimizing Your Database"). Only flag a violation if a heading explicitly contains an action verb ending in "-ing" (such as "Creating", "Developing", "Deploying"). Do NOT flag headings that use root verbs (e.g. "Build"), agent nouns (e.g. "Builders", "Designers"), or standard nouns (e.g. "Marketing", "Pricing", "Spring").
+- [STRUCT-03] No -ing Verbs in Headings: Do not use -ing verbs in headings if a simpler, direct root form exists (e.g., use "Build High-Performance APIs" instead of "Building High-Performance APIs", "Optimize Your Database" instead of "Optimizing Your Database"). Only flag a violation if a heading explicitly contains an action verb ending in "-ing" (such as "Creating", "Developing", "Deploying"). Do NOT flag headings that use root verbs (e.g. "Build"), agent nouns (e.g. "Builders", "Designers"), or standard nouns (e.g. "Marketing", "Pricing", "Spring"). In suggestedFix, you MUST provide the rewritten heading with the -ing word replaced by an active root verb or simpler non-ing phrasing (e.g., replace "existing" with "current", "active", or "your"). NEVER leave the heading unchanged.
 - [STRUCT-04] Short Paragraphs (Max 4 Statements/Sentences): Each paragraph must contain a maximum of 4 statements/sentences (delimited by '.', '!', or '?'). There is NO word count limit on paragraphs. Visual line wrap caused by screen or editor width does NOT count as extra lines. Only flag a violation if a single individual paragraph contains 5 or more distinct statements/sentences.
 - [STRUCT-05] Bullet Points & Tables Used Where Needed: Lists, bullet points, or comparison tables must be used for multi-item concepts, steps, or structured data.
 - [STRUCT-06] Logical Flow & Smooth Section Transitions: Content must flow logically from top to bottom with seamless, natural transitions between sections.
@@ -44,7 +44,9 @@ You must review and evaluate the content EXCLUSIVELY against the following STRIC
 - [TONE-01] Anti-AI (Natural & Human Writing): Keep the writing authentic, human, and conversational. Avoid robotic cadence, cliché AI transitional buzzwords ("delve", "tapestry", "moreover", "furthermore", "beacon", "testament"), and pretentious phrasing.
 - [TONE-02] Non-Generic Content: Avoid vague platitudes; provide specific, useful, and accurate details.
 - [TONE-03] Expert Yet Accessible Tone: Tone must be authoritative, credible, and expert, yet easy for readers to digest.
-- [TONE-04] Hemingway Readability (Grade 7 or Less): Sentence complexity must remain accessible, maintaining a Hemingway readability grade level of Grade 7 or less.
+- [TONE-04] Hemingway Readability (Grade 7 or Less): Sentence complexity must remain accessible, maintaining a Hemingway readability grade level of Grade 7 or less. When content fails this rule:
+  * In "originalExcerpt", quote the specific complex, multi-clause sentence(s) or paragraph driving up the grade score.
+  * In "suggestedFix", you MUST provide an actionable rewritten version that simplifies sentence structures (splitting compound sentences into 2-3 shorter sentences) and replaces multisyllabic words with plain everyday words to bring the readability score down to Grade 7 or less. NEVER output the original text unchanged in "suggestedFix".
 - [TONE-05] Clear Intro & Value-Driven Conclusion with CTA: Introduction must be clear and to the point; conclusion must summarize core value clearly with a relevant, non-intrusive Call to Action (CTA).
 
 ================================================================================
@@ -56,7 +58,12 @@ SCORING & STATUS EVALUATION CRITERIA:
 
 OUTPUT FORMAT:
 - You must return ONLY a JSON response strictly conforming to the requested schema.
-- For each violation, quote the EXACT original excerpt, explain why it violated the guideline, and provide a concrete rewritten "suggestedFix".
+- For each violation:
+  * "originalExcerpt": Quote the EXACT verbatim text from the blog post that violates the rule.
+  * "issue": Concise description of the issue.
+  * "explanation": Clear policy context explaining why it violates the rule.
+  * "suggestedFix": A concrete, rewritten replacement text that directly resolves the issue.
+  * CRITICAL MANDATORY RULE: "suggestedFix" MUST NEVER be identical or equivalent to "originalExcerpt". Every suggested fix must be an actual, distinct editorial rewrite that resolves the issue. If you flag a violation, you MUST provide an actual, modified revision. If a section of text is already acceptable or cannot be improved, DO NOT flag it as a violation.
 - Provide the full checklist for each rule.`;
 
 const JSON_SCHEMA = {
@@ -183,7 +190,7 @@ const JSON_SCHEMA = {
           },
           suggestedFix: {
             type: 'STRING',
-            description: 'Rewritten replacement text or concrete editorial fix'
+            description: 'Concrete rewritten replacement text that resolves the violation. MUST BE DIFFERENT from originalExcerpt. Never return identical text.'
           },
           explanation: {
             type: 'STRING',
@@ -300,6 +307,131 @@ function calculateHemingwayGrade(text) {
     label: `Grade ${gradeInt}`,
     meetsRequirement
   };
+}
+
+
+/**
+ * Helper: Check if original excerpt and suggested fix are effectively identical
+ */
+function isIdenticalExcerptAndFix(original, fix) {
+  if (!original && !fix) return true;
+  if (!original || !fix) return false;
+  const clean = (s) => String(s)
+    .replace(/^["'“”‘’`\s]+|["'“”‘’`\s]+$/g, "")
+    .replace(/[.!?]+$/, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  return clean(original) === clean(fix);
+}
+
+/**
+ * Helper: Create an actionable readability rewrite targeting Hemingway Grade 7 or less (Rule TONE-04)
+ */
+function createReadabilityRewrite(text) {
+  if (!text || typeof text !== "string") return text;
+
+  const simplifications = [
+    [/\bin order to\b/gi, "to"],
+    [/\bdue to the fact that\b/gi, "because"],
+    [/\bat the present time\b/gi, "now"],
+    [/\ba large number of\b/gi, "many"],
+    [/\bin the event that\b/gi, "if"],
+    [/\bwith the exception of\b/gi, "except"],
+    [/\bis able to\b/gi, "can"],
+    [/\bare able to\b/gi, "can"],
+    [/\butilize\b/gi, "use"],
+    [/\butilizes\b/gi, "uses"],
+    [/\butilizing\b/gi, "using"],
+    [/\bfacilitate\b/gi, "help"],
+    [/\bfacilitates\b/gi, "helps"],
+    [/\bdemonstrate\b/gi, "show"],
+    [/\bdemonstrates\b/gi, "shows"],
+    [/\bnumerous\b/gi, "many"],
+    [/\bapproximately\b/gi, "about"],
+    [/\bsignificantly\b/gi, "greatly"],
+    [/\bimplementation\b/gi, "setup"],
+    [/\bimplementing\b/gi, "setting up"],
+    [/\bimplement\b/gi, "set up"],
+    [/\bfurthermore\b/gi, "also"],
+    [/\bmoreover\b/gi, "also"],
+    [/\badditionally\b/gi, "also"],
+    [/\bconsequently\b/gi, "so"],
+    [/\bsubsequently\b/gi, "then"],
+    [/\bplatform migration\b/gi, "platform migration and setup"],
+    [/\bongoing improvements\b/gi, "regular updates"],
+    [/\bcomprehensive\b/gi, "complete"]
+  ];
+
+  let cleaned = text.trim();
+  for (const [pattern, replacement] of simplifications) {
+    cleaned = cleaned.replace(pattern, replacement);
+  }
+
+  const sentences = cleaned.split(/(?<=[.!?])\s+/);
+  const resultSentences = [];
+
+  for (let s of sentences) {
+    const words = s.trim().split(/\s+/).filter(Boolean);
+    if (words.length > 14 && s.includes(",")) {
+      const listMatch = s.match(/^(.+?\b(?:can help with|helps with|offers|covers))\s+([^,]+),\s*([^,]+),\s*([^,]+),\s*(?:and\s+)?(.+)[.!?]?$/i);
+      if (listMatch) {
+        const lead = listMatch[1].trim();
+        resultSentences.push(`${lead} ${listMatch[2].trim()} and ${listMatch[3].trim()}.`);
+        resultSentences.push(`They also help with ${listMatch[4].trim()} and ${listMatch[5].replace(/[.!?]+$/, "").trim()}.`);
+        continue;
+      }
+
+      if (s.includes("; ")) {
+        const parts = s.split("; ");
+        resultSentences.push(parts[0].trim() + ".");
+        const second = parts.slice(1).join("; ").trim();
+        resultSentences.push(second.charAt(0).toUpperCase() + second.slice(1));
+        continue;
+      }
+
+      const conjMatch = s.match(/(.+?),\s*(and|but|so|while)\s+(.+)/i);
+      if (conjMatch && conjMatch[1].split(/\s+/).length >= 5 && conjMatch[3].split(/\s+/).length >= 4) {
+        resultSentences.push(conjMatch[1].trim() + ".");
+        const startWord = conjMatch[2].toLowerCase() === "and" ? "Also," : conjMatch[2].charAt(0).toUpperCase() + conjMatch[2].slice(1);
+        resultSentences.push(`${startWord} ${conjMatch[3].trim()}`);
+        continue;
+      }
+    }
+    resultSentences.push(s);
+  }
+
+  const rewritten = resultSentences.join(" ").trim();
+  if (isIdenticalExcerptAndFix(text, rewritten)) {
+    const firstComma = text.indexOf(",");
+    if (firstComma !== -1 && firstComma > 10 && firstComma < text.length - 15) {
+      const p1 = text.slice(0, firstComma).trim();
+      const p2 = text.slice(firstComma + 1).trim();
+      return `${p1}. ${p2.charAt(0).toUpperCase() + p2.slice(1)}`;
+    }
+  }
+  return rewritten || text;
+}
+
+/**
+ * Helper: Replace -ing words in headings with root or non-ing alternatives (Rule STRUCT-03)
+ */
+function fixIngHeading(heading) {
+  if (!heading || typeof heading !== "string") return heading;
+  let fixed = heading.trim();
+
+  fixed = fixed.replace(/^#+\s*/, "");
+  fixed = fixed.replace(/^([A-Z][a-z]+)ing\b/, (match, root) => {
+    if (root.toLowerCase().endsWith("lat") || root.toLowerCase().endsWith("rat") || root.toLowerCase().endsWith("miz")) {
+      return root + "e";
+    }
+    return root;
+  });
+
+  fixed = fixed.replace(/\ban existing\b/gi, "a current");
+  fixed = fixed.replace(/\bexisting\b/gi, "current");
+
+  return fixed;
 }
 
 function extractDomain(url) {

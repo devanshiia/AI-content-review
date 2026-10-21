@@ -941,6 +941,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const severityClass = `severity-${(v.severity || 'major').toLowerCase()}`;
       card.className = `violation-card ${severityClass}`;
 
+      const origClean = String(v.originalExcerpt || '').replace(/^[\"'“”‘’`\s]+|[\"'“”‘’`\s]+$/g, '').replace(/[.!?]+$/, '').trim().toLowerCase();
+      const fixClean = String(v.suggestedFix || '').replace(/^[\"'“”‘’`\s]+|[\"'“”‘’`\s]+$/g, '').replace(/[.!?]+$/, '').trim().toLowerCase();
+      const hasDistinctFix = Boolean(v.suggestedFix && v.suggestedFix.trim() && origClean !== fixClean);
+
       card.innerHTML = `
         <div class="violation-header">
           <div class="violation-title-group">
@@ -960,11 +964,12 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="diff-section">
             <div class="diff-label fix">
               <span>🟢 Suggested Editorial Fix</span>
+              ${hasDistinctFix ? `
               <button class="btn-copy-fix" data-fix="${escapeAttr(v.suggestedFix)}">
                 📋 Copy Fix
-              </button>
+              </button>` : ''}
             </div>
-            <div class="diff-content fix">${escapeHtml(v.suggestedFix || '')}</div>
+            <div class="diff-content fix">${escapeHtml(hasDistinctFix ? v.suggestedFix : (v.explanation || 'Please rephrase or simplify this text.'))}</div>
           </div>
         </div>
 

@@ -22,7 +22,7 @@ You must review and evaluate the content EXCLUSIVELY against the following STRIC
 2. STRUCTURE, HEADINGS & FORMATTING:
 - [STRUCT-01] Logical Heading Hierarchy (H2 -> H3): Headings must follow a strict, logical hierarchy (H1 -> H2 -> H3).
 - [STRUCT-02] Clear & Non-Generic Headings: Headings must be clear, compelling, and descriptive (no vague or generic headers like "Overview", "Details", "Section 1").
-- [STRUCT-03] No -ing Verbs in Headings: Do not use -ing verbs in headings if a simpler, direct root form exists (e.g., use "Build High-Performance APIs" instead of "Building High-Performance APIs", "Optimize Your Database" instead of "Optimizing Your Database"). Only flag a violation if a heading explicitly contains an action verb ending in "-ing" (such as "Creating", "Developing", "Deploying"). Do NOT flag headings that use root verbs (e.g. "Build"), agent nouns (e.g. "Builders", "Designers"), or standard nouns (e.g. "Marketing", "Pricing", "Spring").
+- [STRUCT-03] No -ing Verbs in Headings: Do not use -ing verbs in headings if a simpler, direct root form exists (e.g., use "Build High-Performance APIs" instead of "Building High-Performance APIs", "Optimize Your Database" instead of "Optimizing Your Database"). Only flag a violation if a heading explicitly contains an action verb ending in "-ing" (such as "Creating", "Developing", "Deploying"). Do NOT flag headings that use root verbs (e.g. "Build"), agent nouns (e.g. "Builders", "Designers"), or standard nouns (e.g. "Marketing", "Pricing", "Spring"). In suggestedFix, you MUST provide the rewritten heading with the -ing word replaced by an active root verb or simpler non-ing phrasing (e.g., replace "existing" with "current", "active", or "your"). NEVER leave the heading unchanged.
 - [STRUCT-04] Short Paragraphs (Max 4 Statements/Sentences): Each paragraph must contain a maximum of 4 statements/sentences (delimited by '.', '!', or '?'). There is NO word count limit on paragraphs. Visual line wrap caused by screen or editor width does NOT count as extra lines. Only flag a violation if a single individual paragraph contains 5 or more distinct statements/sentences.
 - [STRUCT-05] Bullet Points & Tables Used Where Needed: Lists, bullet points, or comparison tables must be used for multi-item concepts, steps, or structured data.
 - [STRUCT-06] Logical Flow & Smooth Section Transitions: Content must flow logically from top to bottom with seamless, natural transitions between sections.
@@ -47,7 +47,9 @@ You must review and evaluate the content EXCLUSIVELY against the following STRIC
 - [TONE-01] Anti-AI (Natural & Human Writing): Keep the writing authentic, human, and conversational. Avoid robotic cadence, cliché AI transitional buzzwords ("delve", "tapestry", "moreover", "furthermore", "beacon", "testament"), and pretentious phrasing.
 - [TONE-02] Non-Generic Content: Avoid vague platitudes; provide specific, useful, and accurate details.
 - [TONE-03] Expert Yet Accessible Tone: Tone must be authoritative, credible, and expert, yet easy for readers to digest.
-- [TONE-04] Hemingway Readability (Grade 7 or Less): Sentence complexity must remain accessible, maintaining a Hemingway readability grade level of Grade 7 or less.
+- [TONE-04] Hemingway Readability (Grade 7 or Less): Sentence complexity must remain accessible, maintaining a Hemingway readability grade level of Grade 7 or less. When content fails this rule:
+  * In "originalExcerpt", quote the specific complex, multi-clause sentence(s) or paragraph driving up the grade score.
+  * In "suggestedFix", you MUST provide an actionable rewritten version that simplifies sentence structures (splitting compound sentences into 2-3 shorter sentences) and replaces multisyllabic words with plain everyday words to bring the readability score down to Grade 7 or less. NEVER output the original text unchanged in "suggestedFix".
 - [TONE-05] Clear Intro & Value-Driven Conclusion with CTA: Introduction must be clear and to the point; conclusion must summarize core value clearly with a relevant, non-intrusive Call to Action (CTA).
 
 ================================================================================
@@ -59,7 +61,12 @@ SCORING & STATUS EVALUATION CRITERIA:
 
 OUTPUT FORMAT:
 - You must return ONLY a JSON response strictly conforming to the requested schema.
-- For each violation, quote the EXACT original excerpt, explain why it violated the guideline, and provide a concrete rewritten "suggestedFix".
+- For each violation:
+  * "originalExcerpt": Quote the EXACT verbatim text from the blog post that violates the rule.
+  * "issue": Concise description of the issue.
+  * "explanation": Clear policy context explaining why it violates the rule.
+  * "suggestedFix": A concrete, rewritten replacement text that directly resolves the issue.
+  * CRITICAL MANDATORY RULE: "suggestedFix" MUST NEVER be identical or equivalent to "originalExcerpt". Every suggested fix must be an actual, distinct editorial rewrite that resolves the issue. If you flag a violation, you MUST provide an actual, modified revision. If a section of text is already acceptable or cannot be improved, DO NOT flag it as a violation.
 - Provide the full checklist for each rule.`;
 
 const GUIDELINE_RULES = [

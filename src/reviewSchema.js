@@ -128,7 +128,7 @@ const reviewResponseSchema = {
           },
           suggestedFix: {
             type: Type.STRING,
-            description: 'Rewritten replacement text or concrete editorial fix'
+            description: 'Concrete rewritten replacement text that resolves the violation. MUST BE DIFFERENT from originalExcerpt. Never return identical text.'
           },
           explanation: {
             type: Type.STRING,

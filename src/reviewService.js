@@ -105,6 +105,131 @@ function calculateHemingwayGrade(text) {
 /**
  * Helper: Extract domain from URL
  */
+
+/**
+ * Helper: Check if original excerpt and suggested fix are effectively identical
+ */
+function isIdenticalExcerptAndFix(original, fix) {
+  if (!original && !fix) return true;
+  if (!original || !fix) return false;
+  const clean = (s) => String(s)
+    .replace(/^["'“”‘’`\s]+|["'“”‘’`\s]+$/g, "")
+    .replace(/[.!?]+$/, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  return clean(original) === clean(fix);
+}
+
+/**
+ * Helper: Create an actionable readability rewrite targeting Hemingway Grade 7 or less (Rule TONE-04)
+ */
+function createReadabilityRewrite(text) {
+  if (!text || typeof text !== "string") return text;
+
+  const simplifications = [
+    [/\bin order to\b/gi, "to"],
+    [/\bdue to the fact that\b/gi, "because"],
+    [/\bat the present time\b/gi, "now"],
+    [/\ba large number of\b/gi, "many"],
+    [/\bin the event that\b/gi, "if"],
+    [/\bwith the exception of\b/gi, "except"],
+    [/\bis able to\b/gi, "can"],
+    [/\bare able to\b/gi, "can"],
+    [/\butilize\b/gi, "use"],
+    [/\butilizes\b/gi, "uses"],
+    [/\butilizing\b/gi, "using"],
+    [/\bfacilitate\b/gi, "help"],
+    [/\bfacilitates\b/gi, "helps"],
+    [/\bdemonstrate\b/gi, "show"],
+    [/\bdemonstrates\b/gi, "shows"],
+    [/\bnumerous\b/gi, "many"],
+    [/\bapproximately\b/gi, "about"],
+    [/\bsignificantly\b/gi, "greatly"],
+    [/\bimplementation\b/gi, "setup"],
+    [/\bimplementing\b/gi, "setting up"],
+    [/\bimplement\b/gi, "set up"],
+    [/\bfurthermore\b/gi, "also"],
+    [/\bmoreover\b/gi, "also"],
+    [/\badditionally\b/gi, "also"],
+    [/\bconsequently\b/gi, "so"],
+    [/\bsubsequently\b/gi, "then"],
+    [/\bplatform migration\b/gi, "platform migration and setup"],
+    [/\bongoing improvements\b/gi, "regular updates"],
+    [/\bcomprehensive\b/gi, "complete"]
+  ];
+
+  let cleaned = text.trim();
+  for (const [pattern, replacement] of simplifications) {
+    cleaned = cleaned.replace(pattern, replacement);
+  }
+
+  const sentences = cleaned.split(/(?<=[.!?])\s+/);
+  const resultSentences = [];
+
+  for (let s of sentences) {
+    const words = s.trim().split(/\s+/).filter(Boolean);
+    if (words.length > 14 && s.includes(",")) {
+      const listMatch = s.match(/^(.+?\b(?:can help with|helps with|offers|covers))\s+([^,]+),\s*([^,]+),\s*([^,]+),\s*(?:and\s+)?(.+)[.!?]?$/i);
+      if (listMatch) {
+        const lead = listMatch[1].trim();
+        resultSentences.push(`${lead} ${listMatch[2].trim()} and ${listMatch[3].trim()}.`);
+        resultSentences.push(`They also help with ${listMatch[4].trim()} and ${listMatch[5].replace(/[.!?]+$/, "").trim()}.`);
+        continue;
+      }
+
+      if (s.includes("; ")) {
+        const parts = s.split("; ");
+        resultSentences.push(parts[0].trim() + ".");
+        const second = parts.slice(1).join("; ").trim();
+        resultSentences.push(second.charAt(0).toUpperCase() + second.slice(1));
+        continue;
+      }
+
+      const conjMatch = s.match(/(.+?),\s*(and|but|so|while)\s+(.+)/i);
+      if (conjMatch && conjMatch[1].split(/\s+/).length >= 5 && conjMatch[3].split(/\s+/).length >= 4) {
+        resultSentences.push(conjMatch[1].trim() + ".");
+        const startWord = conjMatch[2].toLowerCase() === "and" ? "Also," : conjMatch[2].charAt(0).toUpperCase() + conjMatch[2].slice(1);
+        resultSentences.push(`${startWord} ${conjMatch[3].trim()}`);
+        continue;
+      }
+    }
+    resultSentences.push(s);
+  }
+
+  const rewritten = resultSentences.join(" ").trim();
+  if (isIdenticalExcerptAndFix(text, rewritten)) {
+    const firstComma = text.indexOf(",");
+    if (firstComma !== -1 && firstComma > 10 && firstComma < text.length - 15) {
+      const p1 = text.slice(0, firstComma).trim();
+      const p2 = text.slice(firstComma + 1).trim();
+      return `${p1}. ${p2.charAt(0).toUpperCase() + p2.slice(1)}`;
+    }
+  }
+  return rewritten || text;
+}
+
+/**
+ * Helper: Replace -ing words in headings with root or non-ing alternatives (Rule STRUCT-03)
+ */
+function fixIngHeading(heading) {
+  if (!heading || typeof heading !== "string") return heading;
+  let fixed = heading.trim();
+
+  fixed = fixed.replace(/^#+\s*/, "");
+  fixed = fixed.replace(/^([A-Z][a-z]+)ing\b/, (match, root) => {
+    if (root.toLowerCase().endsWith("lat") || root.toLowerCase().endsWith("rat") || root.toLowerCase().endsWith("miz")) {
+      return root + "e";
+    }
+    return root;
+  });
+
+  fixed = fixed.replace(/\ban existing\b/gi, "a current");
+  fixed = fixed.replace(/\bexisting\b/gi, "current");
+
+  return fixed;
+}
+
 function extractDomain(url) {
   try {
     const cleaned = url.replace(/^[a-z]+:\/\//i, '').replace(/^www\./i, '');
