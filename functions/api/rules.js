@@ -6,7 +6,7 @@ const GUIDELINE_RULES = [
   { id: 'SEO-01', category: 'SEO, Title & Meta', name: 'Search Intent Identified & Satisfied Early (150-200 words)' },
   { id: 'SEO-02', category: 'SEO, Title & Meta', name: 'Title Under 58 Characters & Contains Primary Keyword' },
   { id: 'SEO-03', category: 'SEO, Title & Meta', name: 'Meta Description Under 155 Chars & Contains Keyword' },
-  { id: 'SEO-04', category: 'SEO, Title & Meta', name: 'Primary Keyword Used Naturally (2-4 times)' },
+  { id: 'SEO-04', category: 'SEO, Title & Meta', name: 'Primary Keyword Density (1.0% - 2.5% Natural Usage)' },
   { id: 'SEO-05', category: 'SEO, Title & Meta', name: 'Comprehensive SEO & Intent Optimization' },
 
   // 2. Structure, Headings & Formatting

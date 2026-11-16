@@ -781,7 +781,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (metricKeyword) {
       if (data.metrics?.primaryKeyword) {
         const count = data.metrics.primaryKeywordCount ?? 0;
-        metricKeyword.textContent = `${data.metrics.primaryKeyword} (${count}x)`;
+        const densityStr = typeof data.metrics.primaryKeywordDensity === 'number' && data.metrics.primaryKeywordDensity > 0
+          ? ` - ${data.metrics.primaryKeywordDensity}%`
+          : '';
+        metricKeyword.textContent = `${data.metrics.primaryKeyword} (${count}x${densityStr})`;
       } else {
         metricKeyword.textContent = 'None Detected';
       }

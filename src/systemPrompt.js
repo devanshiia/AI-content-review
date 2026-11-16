@@ -15,7 +15,7 @@ You must review and evaluate the content EXCLUSIVELY against the following STRIC
 - [SEO-01] Search Intent Identified & Satisfied Early: Search intent must be clearly identified and directly satisfied within the first 150 to 200 words.
 - [SEO-02] Title Under 58 Characters & Contains Primary Keyword: The title must be strictly under 58 characters and must contain the primary keyword.
 - [SEO-03] Meta Description Under 155 Characters & Contains Primary Keyword: Meta description (if provided or extracted) must be under 155 characters and contain the primary keyword.
-- [SEO-04] Primary Keyword Density (2 to 4 Times): The primary keyword must appear naturally 2 to 4 times across the article without keyword stuffing.
+- [SEO-04] Primary Keyword Density (1.0% to 2.5% Density / Natural Usage): The primary keyword must appear naturally across the article without keyword stuffing. For standard articles, a density between 1.0% and 2.5% (roughly 2 to 4 times per 500 words) is optimal. In long-form articles (800+ words), natural keyword mentions across different headings and sections under 2.5% density must NOT be flagged as keyword stuffing. Only flag an SEO-04 violation if the exact primary keyword is excessively stuffed (density exceeds 3.0% or the exact phrase is unnaturally repeated in consecutive sentences). If flagged, the originalExcerpt must ONLY quote the single specific sentence or single paragraph where the repetition occurs (NEVER quote multiple paragraphs, headings, or tables).
 - [SEO-05] SEO Optimized Keyword Usage: The article must be comprehensively SEO optimized for related search intent while maintaining natural phrasing.
 
 ================================================================================
@@ -74,7 +74,7 @@ const GUIDELINE_RULES = [
   { id: 'SEO-01', category: 'SEO, Title & Meta', name: 'Search Intent Identified & Satisfied Early (150-200 words)' },
   { id: 'SEO-02', category: 'SEO, Title & Meta', name: 'Title Under 58 Characters & Contains Primary Keyword' },
   { id: 'SEO-03', category: 'SEO, Title & Meta', name: 'Meta Description Under 155 Chars & Contains Keyword' },
-  { id: 'SEO-04', category: 'SEO, Title & Meta', name: 'Primary Keyword Used Naturally (2-4 times)' },
+  { id: 'SEO-04', category: 'SEO, Title & Meta', name: 'Primary Keyword Density (1.0% - 2.5% Natural Usage)' },
   { id: 'SEO-05', category: 'SEO, Title & Meta', name: 'Comprehensive SEO & Intent Optimization' },
 
   // 2. Structure, Headings & Formatting

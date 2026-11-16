@@ -46,7 +46,11 @@ const reviewResponseSchema = {
         },
         primaryKeywordCount: {
           type: Type.INTEGER,
-          description: 'Number of times primary keyword appears (Target: 2 to 4 times)'
+          description: 'Number of times primary keyword appears (Target: 1.0% to 2.5% natural density)'
+        },
+        primaryKeywordDensity: {
+          type: Type.NUMBER,
+          description: 'Primary keyword density percentage'
         },
         titleLength: {
           type: Type.INTEGER,

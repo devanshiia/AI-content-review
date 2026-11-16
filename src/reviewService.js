@@ -789,13 +789,17 @@ ${formattedContentForPrompt}
         parsedResult.metrics.internalLinksCount = linkAnalysis.internalLinksCount;
         parsedResult.metrics.externalLinksCount = linkAnalysis.externalLinksCount;
 
-        // Synchronize real keyword count for identified primary keyword
+        let primaryKeywordDensity = 0;
         if (parsedResult.metrics.primaryKeyword) {
           const combinedSearchSpace = `${finalTitle} ${finalMeta} ${trimmedContent}`;
-          parsedResult.metrics.primaryKeywordCount = countKeywordOccurrences(
+          const kwCount = countKeywordOccurrences(
             combinedSearchSpace,
             parsedResult.metrics.primaryKeyword
           );
+          parsedResult.metrics.primaryKeywordCount = kwCount;
+          const kwWords = parsedResult.metrics.primaryKeyword.trim().split(/\s+/).filter(Boolean).length || 1;
+          primaryKeywordDensity = words > 0 ? Math.round(((kwCount * kwWords) / words) * 1000) / 10 : 0;
+          parsedResult.metrics.primaryKeywordDensity = primaryKeywordDensity;
         }
 
         // Handle user-specified secondary keyword (strictly user-entered, never hallucinated/auto-detected by AI)
@@ -836,6 +840,27 @@ ${formattedContentForPrompt}
         if (tone04) {
           tone04.status = hemingway.meetsRequirement ? 'Pass' : 'Fail';
           tone04.notes = `Calculated readability level: ${hemingway.label} (Automated Readability Index: ${hemingway.rawScore}, Target: <= Grade 7).`;
+        }
+
+        // [SEO-04] Primary Keyword Density (1.0% - 2.5% Natural Usage)
+        const seo04 = parsedResult.checklist.find(c => c.ruleId === 'SEO-04');
+        if (seo04) {
+          const kw = parsedResult.metrics?.primaryKeyword;
+          const count = parsedResult.metrics?.primaryKeywordCount || 0;
+          const density = primaryKeywordDensity;
+          if (!kw) {
+            seo04.status = 'Warning';
+            seo04.notes = 'No primary keyword detected to evaluate density.';
+          } else if (count === 0) {
+            seo04.status = 'Fail';
+            seo04.notes = `Primary keyword "${kw}" was not found in the article body (0 occurrences). Target: 1.0% - 2.5% natural density.`;
+          } else if (density > 3.0) {
+            seo04.status = 'Fail';
+            seo04.notes = `Primary keyword "${kw}" appears ${count} times (~${density}% density), exceeding the recommended 2.5% maximum (potential keyword stuffing).`;
+          } else {
+            seo04.status = 'Pass';
+            seo04.notes = `Primary keyword "${kw}" appears ${count} times (~${density}% density) across ${words} words — within optimal natural range (1.0% - 2.5%).`;
+          }
         }
 
         // [LINK-01] Internal Links (At least 1 required, no upper limit)
@@ -968,6 +993,43 @@ ${formattedContentForPrompt}
             return hasRealIngVerb;
           }
           return true;
+        });
+
+        // Filter out false or runaway SEO-04 violations
+        parsedResult.violations = parsedResult.violations.filter(v => {
+          const isSeo04 = v.ruleId === 'SEO-04' || 
+            v.issue.toLowerCase().includes('keyword density') || 
+            v.issue.toLowerCase().includes('keyword stuffing') ||
+            v.issue.toLowerCase().includes('primary keyword is too high');
+          if (!isSeo04) return true;
+
+          const density = primaryKeywordDensity;
+          // If density is healthy (<= 2.8% or <= 3.0% for 800+ words), it's natural usage, not stuffed
+          if (density <= 2.8 || (words >= 800 && density <= 3.0)) {
+            return false;
+          }
+
+          return true;
+        }).map(v => {
+          const isSeo04 = v.ruleId === 'SEO-04' || 
+            v.issue.toLowerCase().includes('keyword density') || 
+            v.issue.toLowerCase().includes('keyword stuffing') ||
+            v.issue.toLowerCase().includes('primary keyword is too high');
+          if (isSeo04) {
+            const kw = parsedResult.metrics?.primaryKeyword || 'primary keyword';
+            const count = parsedResult.metrics?.primaryKeywordCount || 0;
+            const density = primaryKeywordDensity;
+            v.issue = `Primary keyword "${kw}" density is high (${count} occurrences, ~${density}%).`;
+
+            // Truncate runaway multi-paragraph excerpt to a single paragraph
+            if (v.originalExcerpt && (v.originalExcerpt.includes('\n') || v.originalExcerpt.length > 250)) {
+              const paragraphs = v.originalExcerpt.split(/\r?\n\s*\r?\n/).filter(Boolean);
+              const kwLower = kw.toLowerCase();
+              const offendingPara = paragraphs.find(p => p.toLowerCase().includes(kwLower)) || paragraphs[0] || v.originalExcerpt.slice(0, 200);
+              v.originalExcerpt = offendingPara.trim();
+            }
+          }
+          return v;
         });
       }
 
