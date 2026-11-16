@@ -380,13 +380,20 @@ function analyzeLinks(content, title = '') {
   const titleClean = (title || '').toLowerCase();
   const introLower = (introContent + ' ' + titleClean).toLowerCase();
 
+  // Physical check: internal link must actually be placed as a hyperlink inside the introduction or H1
+  // We check whether the raw link tag or an <a> / markdown link pointing to the internal link's URL is physically within introContent or title
   const linksInFirstFold = internalLinks.filter(l => {
-    const linkText = (l.text || '').toLowerCase();
-    const linkUrl = (l.url || '').toLowerCase();
     const rawLink = (l.raw || '').toLowerCase();
-    return (rawLink && introLower.includes(rawLink)) ||
-           (linkUrl.length > 3 && introLower.includes(linkUrl)) ||
-           (linkText.length > 2 && introLower.includes(linkText));
+    const linkUrl = (l.url || '').toLowerCase();
+    if (rawLink && introLower.includes(rawLink)) return true;
+    if (linkUrl) {
+      const escapedUrl = linkUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const hrefPattern = new RegExp(`href=["']\\s*${escapedUrl}[^"']*["']`, 'i');
+      const mdPattern = new RegExp(`\\]\\(\\s*${escapedUrl}[^)]*\\)`, 'i');
+      if (hrefPattern.test(introContent) || mdPattern.test(introContent)) return true;
+      if (hrefPattern.test(title || '') || mdPattern.test(title || '')) return true;
+    }
+    return false;
   });
 
   return {
@@ -711,7 +718,7 @@ class ReviewService {
     // Format content with explicit double-newline paragraph separation for clean LLM parsing
     const formattedContentForPrompt = sanitizedContentForPrompt
       .replace(/<br\s*\/?>\s*(?:&nbsp;|\s)*<br\s*\/?>/gi, '</p>\n\n<p>')
-      .replace(/<\/(?:p|div|h[1-6]|li|blockquote|section|article)>/gi, '</$1>\n\n')
+      .replace(/<\/(p|div|h[1-6]|li|blockquote|section|article)>/gi, '</$1>\n\n')
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<p\b[^>]*>\s*<\/p>/gi, '')
       .replace(/\n{3,}/g, '\n\n')
@@ -727,7 +734,7 @@ VERIFIED SYSTEM-COMPUTED METRICS (REAL LIVE DATA EXTRACTED FROM POST):
 - Explicit Meta Description Provided: "${finalMeta}" (Length: ${metaLength} characters. ${metaLength > 0 && metaLength <= 155 ? 'Under 155 chars: PASS for length.' : metaLength === 0 ? 'No meta description: FAIL.' : `Over 155 chars (${metaLength}/155): FAIL.`})
 - Exact Live Hemingway Readability Score: ${hemingway.label} (Score: ${hemingway.rawScore}. ${hemingway.meetsRequirement ? 'Passes rule [TONE-04] (<= Grade 7).' : 'Fails rule [TONE-04] (exceeds Grade 7).'})
 - Actual Extracted Internal Links Count: ${linkAnalysis.internalLinksCount} internal link(s) (${linkAnalysis.internalLinksCount >= 1 ? `Passes rule [LINK-01] (${linkAnalysis.internalLinksCount} internal link(s) found - meets at least 1 requirement).` : 'Fails rule [LINK-01] (0 internal links found. At least 1 internal link required).'})
-- Internal Links in H1 & Introduction (Before 1st H2): ${linkAnalysis.linksInFirstFoldCount} (${linkAnalysis.linksInFirstFoldCount === 0 ? 'Passes rule [LINK-02] (No internal links in H1 or opening intro before 1st H2).' : `Fails rule [LINK-02] (Found ${linkAnalysis.linksInFirstFoldCount} internal link(s) in H1/intro before 1st H2).`})
+- Internal Links in H1 & Introduction (Before 1st H2): ${linkAnalysis.linksInFirstFoldCount} (${linkAnalysis.linksInFirstFoldCount === 0 ? 'Passes rule [LINK-02] (No internal links in H1 or opening intro before 1st H2. Do NOT flag any LINK-02 violations).' : `Fails rule [LINK-02] (Found ${linkAnalysis.linksInFirstFoldCount} internal link(s) in H1/intro before 1st H2).`})
 - URL Cleanliness Verification: ${linkAnalysis.isAllClean ? 'ALL URLs ARE 100% CLEAN (Zero UTM / AI tracking parameters). Rule [LINK-04] is a PASS.' : `Found ${linkAnalysis.uncleanLinks.length} URL(s) with tracking parameters: ${linkAnalysis.uncleanLinks.map(l => l.url).join(', ')}.`}
 - Heading -ing Verbs Verification: ${headingAnalysis.allCompliant ? `ALL ${headingAnalysis.allHeadings.length} HEADINGS COMPLIANT (Zero unneeded -ing action verbs; headings use direct root verbs or clean nouns). Rule [STRUCT-03] is a PASS.` : `Found ${headingAnalysis.violatingHeadings.length} heading(s) with -ing action verbs: ${headingAnalysis.violatingHeadings.map(h => `"${h.text}" (${h.ingWords.join(', ')})`).join('; ')}.`}
 - Paragraph Statement Count Verification: ${paraAnalysis.allCompliant ? `ALL ${paraAnalysis.totalParagraphs} PARAGRAPHS FULLY COMPLIANT (Each paragraph has <= 4 statements delimited by . ! ?; highest count in any paragraph: ${paraAnalysis.maxStatements} statements). Rule [STRUCT-04] is a PASS. Zero word count restrictions apply.` : `Found ${paraAnalysis.violatingParagraphs.length} paragraph(s) with more than 4 statements: ${paraAnalysis.violatingParagraphs.map(p => `Paragraph #${p.index} has ${p.statementCount} statements ("${p.excerpt}")`).join('; ')}.`}
@@ -920,15 +927,25 @@ ${formattedContentForPrompt}
             v.ruleId !== 'LINK-04' && v.ruleId !== 'LINKS-04'
           );
         }
-        if (linkAnalysis.linksInFirstFoldCount === 0) {
-          parsedResult.violations = parsedResult.violations.filter(v => 
-            v.ruleId !== 'LINK-02' && 
-            v.ruleId !== 'LINKS-02' &&
-            !v.issue.toLowerCase().includes('first fold') &&
-            !v.issue.toLowerCase().includes('150-200 words') &&
-            !v.issue.toLowerCase().includes('150 to 200 words')
-          );
-        }
+        // Filter out any false LINK-02 violations
+        parsedResult.violations = parsedResult.violations.filter(v => {
+          const isLink02 = v.ruleId === 'LINK-02' || v.ruleId === 'LINKS-02' ||
+            v.issue.toLowerCase().includes('first fold') ||
+            v.issue.toLowerCase().includes('150-200 words') ||
+            v.issue.toLowerCase().includes('150 to 200 words') ||
+            v.issue.toLowerCase().includes('introduction before the first h2') ||
+            v.issue.toLowerCase().includes('links present in the introduction');
+          
+          if (!isLink02) return true;
+
+          // If system verified 0 internal links in first fold, strip completely
+          if (linkAnalysis.linksInFirstFoldCount === 0) return false;
+
+          // An excerpt flagged for LINK-02 must physically contain an actual HTML link or Markdown link
+          const excerpt = v.originalExcerpt || '';
+          const hasHyperlink = /<a\s+[^>]*href=["'][^"']+["'][^>]*>/i.test(excerpt) || /\[[^\]]+\]\([^)]+\)/.test(excerpt);
+          return hasHyperlink;
+        });
         // Filter out false STRUCT-04 violations
         parsedResult.violations = parsedResult.violations.filter(v => {
           if (v.ruleId === 'STRUCT-04' || v.issue.toLowerCase().includes('paragraph exceeds') || v.issue.toLowerCase().includes('4 statements') || v.issue.toLowerCase().includes('4 sentences') || v.issue.toLowerCase().includes('4 lines')) {

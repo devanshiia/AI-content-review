@@ -39,7 +39,7 @@ You must review and evaluate the content EXCLUSIVELY against the following STRIC
 ================================================================================
 4. INTERNAL LINKS & CLEAN URLS:
 - [LINK-01] Internal Links Added to Relevant Pages: Content must include at least 1 internal link to relevant contextual pages. Flag an error/warning ONLY if 0 internal links are present. Do NOT flag any error if multiple internal links (e.g. 2, 4, 6, 10, etc.) are added; there is no upper limit.
-- [LINK-02] Skip Internal Links in H1 and Introduction: Do not place internal links in the H1 title/heading or in the opening introductory paragraph(s) before the first H2 heading. Internal links are allowed and encouraged everywhere else from the first H2 heading onwards. Word count limits do NOT apply to link restrictions; only check that H1 and the opening introduction paragraph contain no internal links.
+- [LINK-02] Skip Internal Links in H1 and Introduction: Do not place internal links in the H1 title/heading or in the opening introductory paragraph(s) before the first H2 heading. Internal links are allowed and encouraged everywhere else from the first H2 heading onwards. Word count limits do NOT apply to link restrictions. CRITICAL: Only flag [LINK-02] if an actual hyperlink (<a href="..."> or [text](url)) is physically present inside the H1 or introductory text. NEVER flag standard plain text or unlinked keywords as link violations.
 - [LINK-04] Clean URLs (No AI / Tracking Parameters): All URLs must be clean and free of tracking parameters such as utm_source=gemini, utm_source=chatgpt, utm_source=claude, or unnecessary query tags.
 
 ================================================================================
