@@ -980,6 +980,8 @@ ${formattedContentForPrompt}
       parsedResult = JSON.parse(cleaned);
     }
 
+    let primaryKeywordDensity = 0;
+
     // Synchronize computed metrics
     if (parsedResult.metrics) {
       parsedResult.metrics.wordCount = words;
@@ -989,7 +991,6 @@ ${formattedContentForPrompt}
       parsedResult.metrics.internalLinksCount = linkAnalysis.internalLinksCount;
       parsedResult.metrics.externalLinksCount = linkAnalysis.externalLinksCount;
 
-      let primaryKeywordDensity = 0;
       if (parsedResult.metrics.primaryKeyword) {
         const combinedSearchSpace = `${finalTitle} ${finalMeta} ${trimmedContent}`;
         const kwCount = countKeywordOccurrences(
